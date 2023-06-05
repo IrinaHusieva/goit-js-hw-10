@@ -1,100 +1,98 @@
 import SlimSelect from 'slim-select'
 import Notiflix from 'notiflix';
-// import { fetchBreeds } from "./cat-api.js";
-
-import { fetchBreeds, fetchCatByBreed, displayCatInfo, clearCatInfo } from './cat-api.js';
-
-document.addEventListener('DOMContentLoaded', () => {
-  const breedSelect = new SlimSelect('.breed-select', {
-  placeholder: 'Select a breed',
-  allowDeselect: true,
-});
+import { fetchBreeds, fetchCatByBreed } from "./cat-api.js";
+import { Loading } from 'notiflix/build/notiflix-loading-aio';
 
 
-  breedSelect.onChange = breedId => {
-    if (breedId) {
-      fetchCatByBreed(breedId)
-        .then(cat => {
-          displayCatInfo(cat);
-        })
-        .catch(error => {
-          console.error('Error fetching cat info:', error);
-        });
-    } else {
-      clearCatInfo();
-    }
-  };
-Notiflix.Notify.init({ position: 'right-bottom' });
+Notiflix.Notify.init({
+    position: 'center-top',
+    timeout: 3600000
+})
+let eventError = false;
+const refs = {
+    select: document.querySelector(".breed-select"),
+    divData: document.querySelector(".cat-info")
+}
 
-  fetchBreeds()
-    .then(breeds => {
-      const breedOptions = breeds.map(breed => ({
-        value: breed.id,
-        text: breed.name,
-      }));
-      breedSelect.setData(breedOptions);
-    })
-    .catch(error => {
-      Notiflix.Notify.failure(error.message);
-      throw error;
+startLoading(refs.select);
+fetchBreeds().then((data) => {
+    return data.reduce(
+        (markup, currentEl) => markup + createSelectElement(currentEl), "");
+}).then(updateSelect).catch(onError)
+    .finally(endLoading);
+
+refs.select.addEventListener('change', onSelect);
+
+function createSelectElement({id, name}) {
+    return `<option value="${id}">${name}</option>`
+}
+
+function updateSelect(markup) {
+    refs.select.innerHTML = markup;
+  refs.select.classList.remove("invisible");
+   new SlimSelect({
+        select: refs.select
     });
-});
+}
+
+function onSelect(e) {
+    startLoading(refs.divData);
+    fetchCatByBreed(e.target.value).then((data) => {
+       return data.reduce(
+        (markup, currentEl) => markup + createInfoElement(getArgs(currentEl)), "");
+    }).then(updateInfo)
+        .catch(onError)
+        .finally(endLoading);  
+}
 
 
-// export async function fetchBreeds() {
-//   try {
-//     const response = await fetch('https://api.thecatapi.com/v1/breeds', {
-//       headers: {
-//         'x-api-key': 'YOUR_API_KEY' // Замініть на свій унікальний ключ доступу
-//       }
-//     });
-//     const breeds = await response.json();
-//     return breeds;
-//   } catch (error) {
-//     throw new Error('Failed to fetch breeds');
-//   }
-// }
+function createInfoElement({url,  name, description, temperament}) {    
+   return ` <img
+      class="cat_image"
+      src="${url}"
+      alt="${name}"
+    />
+    <div class="cat-info-text">
+    <h2>${name}</h2>
+    <p>${description}</p>
+    <p><b>Temperament: </b>${temperament}</p>
+    </div>`
+}
 
-// export async function fetchCatByBreed(breedId) {
-//   try {
-//     const response = await fetch(`https://api.thecatapi.com/v1/images/search?breed_ids=${breedId}`, {
-//       headers: {
-//         'x-api-key': 'YOUR_API_KEY' // Замініть на свій унікальний ключ доступу
-//       }
-//     });
-//     const catData = await response.json();
-//     return catData[0];
-//   } catch (error) {
-//     throw new Error('Failed to fetch cat by breed');
-//   }
-// }
-// new SlimSelect({
-//   select: '.breed-select',
-//    data: [
-//     {text: 'Human'}, // regular option
-//     {
-//       label: 'Animals',
-//       options: [
-//         {text: 'Cat'},
-//         {text: 'Dog'},
-//         {text: 'Bird'}
-//       ]
-//     }
-//   ]
-// })
+function updateInfo(markup) {
+    refs.divData.innerHTML = markup;
+    refs.divData.classList.remove("invisible");
+}
 
-// const breedSelect = document.querySelector(".breed-select");
-// const catInfoDiv = document.querySelector(".cat-info");
-// fetchBreeds();
+function getArgs({ url, breeds }) {
+    const { name, description, temperament } = breeds[0];
+    return {
+        url,
+        name,
+        description,
+        temperament
+    }
+}
 
-// const renderBreeds = (breed) => {
-//     const option = document.createElement('option');
-//     option.value = breed.id;
-//     option.textContent = breed.name;
-//     console.log(breed);
-//     return option;
-// };
-// renderBreeds();
-
+function startLoading(element) {
+  if (eventError) afterError();
+  element.classList.add("invisible");
+  
+  Notiflix.Loading.dots('Loading data, please wait...', {
+    backgroundColor: 'rgba(0,0,0,0.4)',});
+}
+function endLoading() {
+  Notiflix.Loading.remove();
+  afterError();
+}
+function onError() {
+    eventError = true;
+    Notiflix.Notify.failure('Oops! Something went wrong! Try reloading the page!');
+}
+function afterError() {
+    const notify = document.querySelector(".notiflix-notify-failure");
+    if (notify) notify.remove();
+    eventError = false;
+}
 
 
