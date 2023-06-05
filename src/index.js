@@ -1,7 +1,8 @@
-import SlimSelect from 'slim-select'
-import Notiflix from 'notiflix';
 import { fetchBreeds, fetchCatByBreed } from "./cat-api.js";
-import { Loading } from 'notiflix/build/notiflix-loading-aio';
+
+import Notiflix, { Loading } from 'notiflix';
+import SlimSelect from 'slim-select';
+import 'slim-select/dist/slimselect.css';
 
 
 Notiflix.Notify.init({
@@ -9,40 +10,62 @@ Notiflix.Notify.init({
     timeout: 3600000
 })
 let eventError = false;
-const refs = {
-    select: document.querySelector(".breed-select"),
-    divData: document.querySelector(".cat-info")
-}
 
-startLoading(refs.select);
-fetchBreeds().then((data) => {
+const refs = {
+  select: document.querySelector('.breed-select'),
+  div: document.querySelector('.cat-info'),
+};
+
+fetchBreeds()
+  .then(data => {
     return data.reduce(
-        (markup, currentEl) => markup + createSelectElement(currentEl), "");
-}).then(updateSelect).catch(onError)
-    .finally(endLoading);
+      (acum, currentElement) => acum + createElements(currentElement),
+      ''
+    );
+  })
+  .then(updateSelect)
+  .catch(onError)
+  .finally(endLoading);
 
 refs.select.addEventListener('change', onSelect);
 
-function createSelectElement({id, name}) {
-    return `<option value="${id}">${name}</option>`
+function createElements({ id, name }) {
+  return `<option value="${id}">${name}</option>`;
 }
 
-function updateSelect(markup) {
-    refs.select.innerHTML = markup;
-  refs.select.classList.remove("invisible");
-   new SlimSelect({
-        select: refs.select
-    });
+function updateSelect(acum) {
+  refs.select.innerHTML = acum;
+  refs.select.classList.remove('invisible');
+  new SlimSelect({
+    select: refs.select,
+  });
 }
 
-function onSelect(e) {
-    startLoading(refs.divData);
-    fetchCatByBreed(e.target.value).then((data) => {
-       return data.reduce(
-        (markup, currentEl) => markup + createInfoElement(getArgs(currentEl)), "");
-    }).then(updateInfo)
-        .catch(onError)
-        .finally(endLoading);  
+function onError() {
+  eventError = true;
+  Notiflix.Notify.failure(
+    'Oops! Something went wrong! Try reloading the page!'
+  );
+}
+
+function endLoading() {
+  Notiflix.Loading.remove();
+  afterError();
+}
+
+function onSelect(evt) {
+  startLoading(refs.div);
+  fetchCatByBreed(evt.target.value)
+    .then(data => {
+      if (!data.length) throw new Error('Data not found');
+      return data.reduce(
+        (acum, currentEl) => acum + createInfoElement(getArgs(currentEl)),
+        ''
+      );
+    })
+    .then(updateInfo)
+    .catch(onError)
+    .finally(endLoading);
 }
 
 
@@ -60,8 +83,8 @@ function createInfoElement({url,  name, description, temperament}) {
 }
 
 function updateInfo(markup) {
-    refs.divData.innerHTML = markup;
-    refs.divData.classList.remove("invisible");
+    refs.div.innerHTML = markup;
+    refs.div.classList.remove("invisible");
 }
 
 function getArgs({ url, breeds }) {
@@ -83,7 +106,7 @@ function startLoading(element) {
 }
 function endLoading() {
   Notiflix.Loading.remove();
-  afterError();
+//   afterError();
 }
 function onError() {
     eventError = true;
