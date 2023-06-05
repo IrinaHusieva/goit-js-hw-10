@@ -1,121 +1,101 @@
 import { fetchBreeds, fetchCatByBreed } from "./cat-api.js";
-
-import Notiflix, { Loading } from 'notiflix';
+import Notiflix from 'notiflix';
+import "notiflix/src/notiflix.css";
 import SlimSelect from 'slim-select';
-import 'slim-select/dist/slimselect.css';
+import "slim-select/dist/slimselect.css";
 
 
 Notiflix.Notify.init({
     position: 'center-top',
+    distance: '40px',
     timeout: 3600000
-})
-let eventError = false;
+});
+
 
 const refs = {
-  select: document.querySelector('.breed-select'),
-  div: document.querySelector('.cat-info'),
+    select: document.querySelector(".breed-select"),
+    divData: document.querySelector(".cat-info"),
+    loader: document.querySelector(".loader"),
+    error: document.querySelector(".error"),
 };
 
+
+refs.select.classList.add("invisible");
+refs.divData.classList.add("invisible");
+refs.loader.classList.add("invisible");
+
+
+startLoading(refs.select);
 fetchBreeds()
-  .then(data => {
-    return data.reduce(
-      (acum, currentElement) => acum + createElements(currentElement),
-      ''
-    );
-  })
-  .then(updateSelect)
-  .catch(onError)
-  .finally(endLoading);
+    .then((breeds) => {
+        if (!breeds.length) throw new Error("Data not found");
+        const markup = breeds.map(createSelectOption).join('');
+        return markup;
+    })
+    .then(updateSelect)
+    .catch(onError)
+    .finally(endLoading);
+
 
 refs.select.addEventListener('change', onSelect);
 
-function createElements({ id, name }) {
-  return `<option value="${id}">${name}</option>`;
+function createSelectOption({ id, name }) {
+    return `<option value="${id}">${name || "Unknown"}</option>`;
 }
 
-function updateSelect(acum) {
-  refs.select.innerHTML = acum;
-  refs.select.classList.remove('invisible');
-  new SlimSelect({
-    select: refs.select,
-  });
+function updateSelect(markup) {
+    refs.select.innerHTML = markup;
+    new SlimSelect({
+        select: refs.select
+    });
+    refs.select.classList.remove("invisible");
 }
 
-function onError() {
-  eventError = true;
-  Notiflix.Notify.failure(
-    'Oops! Something went wrong! Try reloading the page!'
-  );
+function onSelect(e) {
+    startLoading(refs.divData);
+    fetchCatByBreed(e.target.value)
+        .then((cats) => {
+            if (!cats.length) throw new Error("Data not found");
+            const markup = cats.map(createCatInfo).join('');
+            return markup;
+        })
+        .then(updateInfo)
+        .catch(onError)
+        .finally(endLoading);
 }
 
-function endLoading() {
-  Notiflix.Loading.remove();
-  afterError();
-}
-
-function onSelect(evt) {
-  startLoading(refs.div);
-  fetchCatByBreed(evt.target.value)
-    .then(data => {
-      if (!data.length) throw new Error('Data not found');
-      return data.reduce(
-        (acum, currentEl) => acum + createInfoElement(getArgs(currentEl)),
-        ''
-      );
-    })
-    .then(updateInfo)
-    .catch(onError)
-    .finally(endLoading);
-}
-
-
-function createInfoElement({url,  name, description, temperament}) {    
-   return ` <img
-      class="cat_image"
-      src="${url}"
-      alt="${name}"
-    />
-    <div class="cat-info-text">
-    <h2>${name}</h2>
-    <p>${description}</p>
-    <p><b>Temperament: </b>${temperament}</p>
-    </div>`
-}
-
-function updateInfo(markup) {
-    refs.div.innerHTML = markup;
-    refs.div.classList.remove("invisible");
-}
-
-function getArgs({ url, breeds }) {
+function createCatInfo({ url, breeds }) {
     const { name, description, temperament } = breeds[0];
-    return {
-        url,
-        name,
-        description,
-        temperament
-    }
+    return `
+        <img class="cat-image" src="${url}" alt="${name || "Unknown"}">
+        <div class="cat-info-text">
+            <h2>${name || "Unknown"}</h2>
+            <p>${description || "Unknown"}</p>
+            <p><b>Temperament: </b>${temperament || "Unknown"}</p>
+        </div>`
+}
+ 
+function updateInfo(markup) {
+refs.divData.innerHTML = markup;
+refs.divData.classList.remove("invisible");
 }
 
 function startLoading(element) {
-  if (eventError) afterError();
-  element.classList.add("invisible");
-  
-  Notiflix.Loading.dots('Loading data, please wait...', {
-    backgroundColor: 'rgba(0,0,0,0.4)',});
+element.classList.add("invisible");
+refs.loader.classList.remove("invisible");
 }
+
 function endLoading() {
-  Notiflix.Loading.remove();
-//   afterError();
+refs.loader.classList.add("invisible");
 }
+
 function onError() {
-    eventError = true;
-    Notiflix.Notify.failure('Oops! Something went wrong! Try reloading the page!');
-}
-function afterError() {
-    const notify = document.querySelector(".notiflix-notify-failure");
-    if (notify) notify.remove();
-    eventError = false;
+refs.error.classList.remove("invisible");
 }
 
-
+refs.select.addEventListener('click', () => {
+refs.error.classList.add("invisible");
+});
+refs.divData.addEventListener('click', () => {
+refs.error.classList.add("invisible");
+});
