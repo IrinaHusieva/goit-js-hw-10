@@ -1,8 +1,20 @@
+const refs = {
+    select: document.querySelector(".breed-select"),
+    divData: document.querySelector(".cat-info"),
+    loader: document.querySelector(".loader"),
+    error: document.querySelector(".error"),
+};
+
 import { fetchBreeds, fetchCatByBreed } from "./cat-api.js";
 import Notiflix from 'notiflix';
 import "notiflix/src/notiflix.css";
 import SlimSelect from 'slim-select';
 import "slim-select/dist/slimselect.css";
+import { Spinner } from 'spin.js';
+import 'spin.js/spin.css';
+
+var spinner = new Spinner().spin();
+refs.loader.appendChild(spinner.el);
 
 
 Notiflix.Notify.init({
@@ -10,14 +22,6 @@ Notiflix.Notify.init({
     distance: '40px',
     timeout: 3600000
 });
-
-
-const refs = {
-    select: document.querySelector(".breed-select"),
-    divData: document.querySelector(".cat-info"),
-    loader: document.querySelector(".loader"),
-    error: document.querySelector(".error"),
-};
 
 
 refs.select.classList.add("invisible");
@@ -90,8 +94,11 @@ refs.loader.classList.add("invisible");
 }
 
 function onError() {
-refs.error.classList.remove("invisible");
+    refs.loader.classList.add("invisible");
+    refs.divData.classList.add("invisible");
+    Notiflix.Notify.failure("Oops! Something went wrong! Try reloading the page!");
 }
+
 
 refs.select.addEventListener('click', () => {
 refs.error.classList.add("invisible");
