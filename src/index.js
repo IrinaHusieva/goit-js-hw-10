@@ -92,13 +92,16 @@ refs.loader.classList.remove("invisible");
 function endLoading() {
 refs.loader.classList.add("invisible");
 }
+let errorOccurred = false;
 
 function onError() {
-    refs.loader.classList.add("invisible");
-    refs.divData.classList.add("invisible");
-    Notiflix.Notify.failure("Oops! Something went wrong! Try reloading the page!");
+    if (!errorOccurred) { 
+        errorOccurred = true;
+        refs.loader.classList.add("invisible");
+        refs.divData.classList.add("invisible");
+        Notiflix.Notify.failure("Oops! Something went wrong! Try reloading the page!");
+    }
 }
-
 
 refs.select.addEventListener('click', () => {
 refs.error.classList.add("invisible");
